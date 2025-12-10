@@ -37,24 +37,19 @@ public class DoctorService {
         Doctor doctor = doctorRepository.findById(doctorId).orElse(null);
         if (doctor == null) return new ArrayList<>();
 
-        // Get all configured times for the doctor
         List<String> allSlots = doctor.getAvailableTimes();
         if (allSlots == null) return new ArrayList<>();
 
-        // Fetch appointments for this doctor on the specific date
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
         List<Appointment> appointments = appointmentRepository.findByDoctorIdAndAppointmentTimeBetween(doctorId, startOfDay, endOfDay);
 
-        // 获取已预约的具体时间点 (例如 ["09:00", "14:00"])
         List<String> bookedTimes = appointments.stream()
                 .map(a -> a.getAppointmentTime().toLocalTime().toString())
                 .collect(Collectors.toList());
 
-        // 核心修复：过滤掉那些**以已预约时间点开头**的时间段
         return allSlots.stream()
                 .filter(slot -> {
-                    // 如果 bookedTimes 中没有任何一个时间能匹配上当前 slot 的开头，则保留该 slot
                     return bookedTimes.stream().noneMatch(bookedTime -> slot.startsWith(bookedTime));
                 })
                 .collect(Collectors.toList());
@@ -62,27 +57,23 @@ public class DoctorService {
 
     @Transactional
     public int saveDoctor(Doctor doctor) {
-        try {
-            if (doctorRepository.findByEmail(doctor.getEmail()) != null) {
-                return -1; // Doctor already exists
-            }
-            doctorRepository.save(doctor);
-            return 1; // Success
-        } catch (Exception e) {
-            return 0; // Internal error
+        if (doctorRepository.findByEmail(doctor.getEmail()) != null) {
+            return -1; 
         }
+        doctorRepository.save(doctor);
+        return 1; 
     }
 
     @Transactional
     public int updateDoctor(Doctor doctor) {
         try {
             if (!doctorRepository.existsById(doctor.getId())) {
-                return -1; // Doctor not found
+                return -1; 
             }
             doctorRepository.save(doctor);
-            return 1; // Success
+            return 1; 
         } catch (Exception e) {
-            return 0; // Internal error
+            return 0; 
         }
     }
 
@@ -95,14 +86,13 @@ public class DoctorService {
     public int deleteDoctor(Long id) {
         try {
             if (!doctorRepository.existsById(id)) {
-                return -1; // Not found
+                return -1; 
             }
-            // Delete associated appointments first
             appointmentRepository.deleteAllByDoctorId(id);
             doctorRepository.deleteById(id);
-            return 1; // Success
+            return 1; 
         } catch (Exception e) {
-            return 0; // Internal error
+            return 0; 
         }
     }
 
@@ -129,25 +119,53 @@ public class DoctorService {
         return response;
     }
 
-    // Filtering Helpers
-    private boolean isTimeInAmPm(String time, String amOrPm) {
-        // Simple logic: AM is 00:00 to 11:59, PM is 12:00 to 23:59
-        LocalTime localTime = LocalTime.parse(time);
-        if ("AM".equalsIgnoreCase(amOrPm)) {
-            return localTime.getHour() < 12;
-        } else if ("PM".equalsIgnoreCase(amOrPm)) {
-            return localTime.getHour() >= 12;
+    // ==========================================
+    // 核心修复区域：过滤逻辑
+    // ==========================================
+
+    /**
+     * 判断某个时间段是否属于 AM 或 PM
+     * @param slot 数据库中的时间段，例如 "09:00-10:00"
+     * @param amOrPm "AM" 或 "PM"
+     */
+    private boolean isTimeInAmPm(String slot, String amOrPm) {
+        try {
+            // 修复点：先拆分字符串，取开始时间 "09:00" 进行解析
+            String startTime = slot.split("-")[0];
+            LocalTime localTime = LocalTime.parse(startTime);
+            
+            if ("AM".equalsIgnoreCase(amOrPm)) {
+                return localTime.getHour() < 12;
+            } else if ("PM".equalsIgnoreCase(amOrPm)) {
+                return localTime.getHour() >= 12;
+            }
+        } catch (Exception e) {
+            // 解析失败（比如数据格式不对）时不报错，直接返回不匹配
+            return false;
         }
         return false;
     }
 
-    private List<Doctor> filterDoctorByTime(List<Doctor> doctors, String amOrPm) {
+    /**
+     * 统一的时间过滤入口
+     */
+    private List<Doctor> filterDoctorByTimeHelper(List<Doctor> doctors, String timeFilter) {
         List<Doctor> filteredDoctors = new ArrayList<>();
         for (Doctor doc : doctors) {
             if (doc.getAvailableTimes() != null) {
-                boolean hasTime = doc.getAvailableTimes().stream()
-                        .anyMatch(time -> isTimeInAmPm(time, amOrPm));
-                if (hasTime) {
+                boolean match = false;
+                
+                // 情况1：如果是 AM/PM 过滤 (前端逻辑)
+                if ("AM".equalsIgnoreCase(timeFilter) || "PM".equalsIgnoreCase(timeFilter)) {
+                    match = doc.getAvailableTimes().stream()
+                            .anyMatch(slot -> isTimeInAmPm(slot, timeFilter));
+                } 
+                // 情况2：如果是具体时间段过滤 (CURL逻辑，例如 "09:00-10:00")
+                else {
+                    match = doc.getAvailableTimes().contains(timeFilter);
+                }
+
+                if (match) {
                     filteredDoctors.add(doc);
                 }
             }
@@ -156,18 +174,18 @@ public class DoctorService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> filterDoctorsByNameSpecilityandTime(String name, String specialty, String amOrPm) {
+    public Map<String, Object> filterDoctorsByNameSpecilityandTime(String name, String specialty, String time) {
         List<Doctor> doctors = doctorRepository.findByNameContainingIgnoreCaseAndSpecialtyIgnoreCase(name, specialty);
-        List<Doctor> filtered = filterDoctorByTime(doctors, amOrPm);
+        List<Doctor> filtered = filterDoctorByTimeHelper(doctors, time);
         Map<String, Object> response = new HashMap<>();
         response.put("doctors", filtered);
         return response;
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> filterDoctorByNameAndTime(String name, String amOrPm) {
+    public Map<String, Object> filterDoctorByNameAndTime(String name, String time) {
         List<Doctor> doctors = doctorRepository.findByNameLike(name);
-        List<Doctor> filtered = filterDoctorByTime(doctors, amOrPm);
+        List<Doctor> filtered = filterDoctorByTimeHelper(doctors, time);
         Map<String, Object> response = new HashMap<>();
         response.put("doctors", filtered);
         return response;
@@ -182,9 +200,9 @@ public class DoctorService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> filterDoctorByTimeAndSpecility(String specialty, String amOrPm) {
+    public Map<String, Object> filterDoctorByTimeAndSpecility(String specialty, String time) {
         List<Doctor> doctors = doctorRepository.findBySpecialtyIgnoreCase(specialty);
-        List<Doctor> filtered = filterDoctorByTime(doctors, amOrPm);
+        List<Doctor> filtered = filterDoctorByTimeHelper(doctors, time);
         Map<String, Object> response = new HashMap<>();
         response.put("doctors", filtered);
         return response;
@@ -199,9 +217,9 @@ public class DoctorService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> filterDoctorsByTime(String amOrPm) {
+    public Map<String, Object> filterDoctorsByTime(String time) {
         List<Doctor> doctors = doctorRepository.findAll();
-        List<Doctor> filtered = filterDoctorByTime(doctors, amOrPm);
+        List<Doctor> filtered = filterDoctorByTimeHelper(doctors, time);
         Map<String, Object> response = new HashMap<>();
         response.put("doctors", filtered);
         return response;

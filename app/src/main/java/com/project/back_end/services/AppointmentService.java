@@ -84,7 +84,6 @@ public class AppointmentService {
     public Map<String, Object> getAppointment(String pname, LocalDate date, String token) {
         Map<String, Object> response = new HashMap<>();
         
-        // Identify the doctor from the token
         String doctorEmail = tokenService.extractIdentifier(token);
         Doctor doctor = doctorRepository.findByEmail(doctorEmail);
 
@@ -97,8 +96,9 @@ public class AppointmentService {
         LocalDateTime end = date.atTime(LocalTime.MAX);
         List<Appointment> appointments;
 
-        // Filter by patient name if provided, otherwise fetch all for the date
-        if (pname != null && !pname.isEmpty()) {
+        // 核心修复：增加 !pname.equals("null") 判断
+        // 防止将默认参数 "null" 当作名字去数据库搜索
+        if (pname != null && !pname.isEmpty() && !pname.equals("null")) {
             appointments = appointmentRepository.findByDoctorIdAndPatient_NameContainingIgnoreCaseAndAppointmentTimeBetween(
                     doctor.getId(), pname, start, end);
         } else {

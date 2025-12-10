@@ -44,8 +44,11 @@ if (datePicker) {
 
 async function loadAppointments() {
     try {
-        // Assuming getAllAppointments imported from appointmentRecordService handles the fetch
-        const appointments = await getAllAppointments(selectedDate, patientName, token);
+        // 获取后端响应（这是一个包含 appointments 字段的对象）
+        const response = await getAllAppointments(selectedDate, patientName, token);
+        
+        // 修正1：从对象中提取数组
+        const appointments = response.appointments; 
         
         patientTableBody.innerHTML = "";
 
@@ -53,9 +56,18 @@ async function loadAppointments() {
             patientTableBody.innerHTML = `<tr><td colspan="5">No Appointments found for today.</td></tr>`;
         } else {
             appointments.forEach(app => {
-                // Assuming app object structure contains patient details directly or nested
-                // Adjust based on actual API response structure
-                const row = createPatientRow(app); 
+                // 修正2：将 AppointmentDTO 映射为 createPatientRow 所需的结构
+                // DTO字段: patientName, patientPhone... -> 组件字段: name, phone...
+                const patientData = {
+                    id: app.patientId,
+                    name: app.patientName,
+                    phone: app.patientPhone,
+                    email: app.patientEmail
+                };
+
+                // 修正3：传入所有必要参数 (patientData, appointmentId, doctorId)
+                // 这样生成的“添加处方”和“查看病历”按钮才能有正确的链接
+                const row = createPatientRow(patientData, app.id, app.doctorId); 
                 patientTableBody.appendChild(row);
             });
         }
