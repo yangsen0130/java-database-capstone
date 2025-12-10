@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 @Entity
-@Table(name = "doctors")
+@Table(name = "doctor")
 public class Doctor {
 
     @Id
@@ -38,8 +38,8 @@ public class Doctor {
     private String phone;
 
     @ElementCollection
-    @CollectionTable(name = "doctor_availability", joinColumns = @JoinColumn(name = "doctor_id"))
-    @Column(name = "available_time")
+    @CollectionTable(name = "doctor_available_times", joinColumns = @JoinColumn(name = "doctor_id"))
+    @Column(name = "available_times") // 修正：使用复数，与字段名 availableTimes 保持一致
     private List<String> availableTimes;
 
     // Constructors
