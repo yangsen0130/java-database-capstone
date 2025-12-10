@@ -1,30 +1,54 @@
-package com.project.back_end.mvc;
+package com.example.capstone.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import com.example.capstone.service.TokenService; // Import your Service class here
+import java.util.Map;
+
+@Controller
 public class DashboardController {
 
-// 1. Set Up the MVC Controller Class:
-//    - Annotate the class with `@Controller` to indicate that it serves as an MVC controller returning view names (not JSON).
-//    - This class handles routing to admin and doctor dashboard pages based on token validation.
+    // Autowire the service that handles token validation
+    // Ensure 'TokenService' matches the class name you created in the previous lab
+    @Autowired
+    private TokenService tokenService;
 
+    /**
+     * Handles requests to the Admin Dashboard.
+     * Validates if the token belongs to an admin.
+     */
+    @GetMapping("/adminDashboard/{token}")
+    public String showAdminDashboard(@PathVariable String token) {
+        // Validate token for "admin" role
+        // The lab logic states: if the returned map is empty, the token is VALID.
+        Map<String, String> validationResult = tokenService.validateToken(token, "admin");
 
-// 2. Autowire the Shared Service:
-//    - Inject the common `Service` class, which provides the token validation logic used to authorize access to dashboards.
+        if (validationResult.isEmpty()) {
+            // Token is valid, return the view name (resolves to templates/admin/adminDashboard.html)
+            return "admin/adminDashboard";
+        } else {
+            // Token is invalid, redirect to login page (root URL)
+            return "redirect:/";
+        }
+    }
 
+    /**
+     * Handles requests to the Doctor Dashboard.
+     * Validates if the token belongs to a doctor.
+     */
+    @GetMapping("/doctorDashboard/{token}")
+    public String showDoctorDashboard(@PathVariable String token) {
+        // Validate token for "doctor" role
+        Map<String, String> validationResult = tokenService.validateToken(token, "doctor");
 
-// 3. Define the `adminDashboard` Method:
-//    - Handles HTTP GET requests to `/adminDashboard/{token}`.
-//    - Accepts an admin's token as a path variable.
-//    - Validates the token using the shared service for the `"admin"` role.
-//    - If the token is valid (i.e., no errors returned), forwards the user to the `"admin/adminDashboard"` view.
-//    - If invalid, redirects to the root URL, likely the login or home page.
-
-
-// 4. Define the `doctorDashboard` Method:
-//    - Handles HTTP GET requests to `/doctorDashboard/{token}`.
-//    - Accepts a doctor's token as a path variable.
-//    - Validates the token using the shared service for the `"doctor"` role.
-//    - If the token is valid, forwards the user to the `"doctor/doctorDashboard"` view.
-//    - If the token is invalid, redirects to the root URL.
-
-
+        if (validationResult.isEmpty()) {
+            // Token is valid, return the view name (resolves to templates/doctor/doctorDashboard.html)
+            return "doctor/doctorDashboard";
+        } else {
+            // Token is invalid, redirect to login page (root URL)
+            return "redirect:/";
+        }
+    }
 }
