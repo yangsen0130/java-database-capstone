@@ -46,14 +46,17 @@ public class DoctorService {
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
         List<Appointment> appointments = appointmentRepository.findByDoctorIdAndAppointmentTimeBetween(doctorId, startOfDay, endOfDay);
 
-        // Convert appointment times to String format (HH:mm) to match slots
-        List<String> bookedSlots = appointments.stream()
+        // 获取已预约的具体时间点 (例如 ["09:00", "14:00"])
+        List<String> bookedTimes = appointments.stream()
                 .map(a -> a.getAppointmentTime().toLocalTime().toString())
                 .collect(Collectors.toList());
 
-        // Filter out booked slots
+        // 核心修复：过滤掉那些**以已预约时间点开头**的时间段
         return allSlots.stream()
-                .filter(slot -> !bookedSlots.contains(slot))
+                .filter(slot -> {
+                    // 如果 bookedTimes 中没有任何一个时间能匹配上当前 slot 的开头，则保留该 slot
+                    return bookedTimes.stream().noneMatch(bookedTime -> slot.startsWith(bookedTime));
+                })
                 .collect(Collectors.toList());
     }
 

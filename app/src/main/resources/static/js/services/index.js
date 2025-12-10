@@ -18,6 +18,13 @@ window.onload = function () {
             openModal('doctorLogin');
         });
     }
+
+    const patientBtn = document.getElementById('patientBtn');
+    if (patientBtn) {
+        patientBtn.addEventListener('click', () => {
+            window.selectRole('patient');
+        });
+    }
 };
 
 window.adminLoginHandler = async function () {

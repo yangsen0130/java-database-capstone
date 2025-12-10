@@ -45,17 +45,17 @@ public class TokenService {
     }
 
     public String extractIdentifier(String token) {
-        try {
-            return Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody()
-                    .getSubject();
-        } catch (Exception e) {
-            return null;
-        }
+    try {
+        return Jwts.parser() // 1. 改用 parser()
+                .verifyWith(getSigningKey()) // 2. 改用 verifyWith 替代 setSigningKey
+                .build()
+                .parseSignedClaims(token) // 3. 改用 parseSignedClaims 替代 parseClaimsJws
+                .getPayload() // 4. 改用 getPayload 替代 getBody
+                .getSubject();
+    } catch (Exception e) {
+        return null;
     }
+}
 
     public boolean validateToken(String token, String userType) {
         String identifier = extractIdentifier(token);

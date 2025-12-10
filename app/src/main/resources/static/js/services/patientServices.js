@@ -5,7 +5,8 @@ const PATIENT_API = API_BASE_URL + '/patient';
 // Patient Signup
 export async function patientSignup(data) {
     try {
-        const response = await fetch(`${PATIENT_API}/signup`, { // Adjusted endpoint standard
+        // 修正：后端映射是 POST /patient，去除多余的 /signup
+        const response = await fetch(`${PATIENT_API}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -18,7 +19,7 @@ export async function patientSignup(data) {
     }
 }
 
-// Patient Login
+// Patient Login (此函数路径 /login 正确，保持不变)
 export async function patientLogin(data) {
     try {
         const response = await fetch(`${PATIENT_API}/login`, {
@@ -33,13 +34,15 @@ export async function patientLogin(data) {
     }
 }
 
-// Fetch Logged-in Patient Data
+// Fetch Logged-in Patient Data - 【这里修复了你的报错】
 export async function getPatientData(token) {
     try {
-        const response = await fetch(`${PATIENT_API}/details/${token}`); // Assuming /details endpoint or similar
+        // 修正1：后端映射是 GET /patient/{token}，去除多余的 /details
+        const response = await fetch(`${PATIENT_API}/${token}`);
         if (response.ok) {
             const data = await response.json();
-            return data;
+            // 修正2：后端返回结构是 { "patient": Object }，前端需要提取里面的 patient
+            return data.patient; 
         }
         return null;
     } catch (error) {
@@ -51,23 +54,26 @@ export async function getPatientData(token) {
 // Fetch Patient Appointments
 export async function getPatientAppointments(id, token, user) {
     try {
-        // Constructing URL based on user type if logic differs, or sending generic request
-        const response = await fetch(`${PATIENT_API}/appointments/${id}/${user}/${token}`);
+        // 修正：后端映射是 GET /patient/{id}/{token}
+        // 原代码多了 /appointments 和 /user，会导致获取列表失败
+        const response = await fetch(`${PATIENT_API}/${id}/${token}`);
         if (response.ok) {
             const data = await response.json();
-            return data; // Assuming returns array of appointments
+            return data.appointments || []; 
         }
-        return null;
+        return [];
     } catch (error) {
         console.error("Error fetching appointments:", error);
-        return null;
+        return [];
     }
 }
 
 // Filter Appointments
 export async function filterAppointments(condition, name, token) {
     try {
-        const response = await fetch(`${PATIENT_API}/appointments/filter/${condition}/${name}/${token}`);
+        // 修正：后端映射是 GET /patient/filter/...
+        // 原代码多了 /appointments
+        const response = await fetch(`${PATIENT_API}/filter/${condition}/${name}/${token}`);
         if (response.ok) {
             const data = await response.json();
             return data;

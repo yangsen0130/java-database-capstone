@@ -7,7 +7,8 @@ export async function getDoctors() {
     try {
         const response = await fetch(DOCTOR_API);
         const data = await response.json();
-        return data; // Assuming backend returns the list directly
+        // 修正点：返回 data.doctors，如果为空则返回空数组
+        return data.doctors || []; 
     } catch (error) {
         console.error("Error fetching doctors:", error);
         return [];
@@ -46,11 +47,7 @@ export async function saveDoctor(doctor, token) {
     }
 }
 
-// Filter Doctors
 export async function filterDoctors(name, time, specialty) {
-    // Construct query parameters or path variables based on backend requirement
-    // Assuming path variables based on lab description: /filter/{name}/{time}/{specialty}
-    // Handling null/empty values
     const n = name || "null";
     const t = time || "null";
     const s = specialty || "null";
@@ -59,7 +56,8 @@ export async function filterDoctors(name, time, specialty) {
         const response = await fetch(`${DOCTOR_API}/filter/${n}/${t}/${s}`);
         if (response.ok) {
             const data = await response.json();
-            return data;
+            // 修正点：返回 data.doctors
+            return data.doctors || []; 
         } else {
             return [];
         }

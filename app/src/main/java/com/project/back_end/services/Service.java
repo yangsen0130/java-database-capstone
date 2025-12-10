@@ -99,10 +99,15 @@ public class Service {
                 appointment.getAppointmentTime().toLocalDate()
         );
 
+        // 获取请求的时间点字符串 (例如 "09:00")
         String requestedTime = appointment.getAppointmentTime().toLocalTime().toString();
         
-        // Check if requested time is in the list of available slots
-        if (availableSlots.contains(requestedTime)) {
+        // 核心修复：检查可用时间段列表中，是否有任何一个时间段是以请求的时间点**开头**的
+        // 例如：检查 "09:00-10:00" 是否以 "09:00" 开头 -> true
+        boolean isSlotAvailable = availableSlots.stream()
+                .anyMatch(slot -> slot.startsWith(requestedTime));
+
+        if (isSlotAvailable) {
             return 1; // Valid
         } else {
             return 0; // Unavailable

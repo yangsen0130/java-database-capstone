@@ -26,9 +26,14 @@ async function loadDoctorCards() {
 }
 
 // Search and Filter Listeners
-document.getElementById("searchBar").addEventListener("input", filterDoctorsOnChange);
-document.getElementById("filterTime").addEventListener("change", filterDoctorsOnChange);
-document.getElementById("filterSpecialty").addEventListener("change", filterDoctorsOnChange);
+const searchBar = document.getElementById("searchBar");
+if(searchBar) searchBar.addEventListener("input", filterDoctorsOnChange);
+
+const filterTime = document.getElementById("filterTime");
+if(filterTime) filterTime.addEventListener("change", filterDoctorsOnChange);
+
+const filterSpecialty = document.getElementById("filterSpecialty");
+if(filterSpecialty) filterSpecialty.addEventListener("change", filterDoctorsOnChange);
 
 async function filterDoctorsOnChange() {
     const name = document.getElementById("searchBar").value.trim() || null;
@@ -41,8 +46,11 @@ async function filterDoctorsOnChange() {
         const doctors = await filterDoctors(name, time, specialty);
         contentDiv.innerHTML = "";
         
-        if (doctors && doctors.length > 0) {
-            renderDoctorCards(doctors);
+        // 这里的逻辑适配我们之前修正过的 doctorServices.js 返回结构
+        if (doctors && doctors.doctors && doctors.doctors.length > 0) {
+            renderDoctorCards(doctors.doctors);
+        } else if (Array.isArray(doctors) && doctors.length > 0) {
+             renderDoctorCards(doctors);
         } else {
             contentDiv.innerHTML = "<p>No doctors found with the given filters.</p>";
         }
@@ -81,18 +89,27 @@ window.signupPatient = async function () {
     }
 };
 
-// Patient Login Handler
+// Patient Login Handler - CRITICAL FIX HERE
 window.loginPatient = async function () {
-    const email = document.getElementById("email").value;
+    // 使用 identifier 来匹配后端 DTO
+    const identifier = document.getElementById("email").value; 
     const password = document.getElementById("password").value;
-    const data = { email, password };
+    
+    // 注意：后端 Login DTO 字段名为 identifier
+    const data = { identifier, password }; 
 
     try {
         const response = await patientLogin(data);
         if (response.ok) {
             const result = await response.json();
+            
+            // 1. 保存 Token
             localStorage.setItem("token", result.token);
-            // Assuming selectRole logic or redirection
+            
+            // 2. 关键修复：必须保存用户角色，否则 Header 和预约功能无法识别身份
+            localStorage.setItem("userRole", "loggedPatient"); 
+
+            // 3. 跳转到登录后的仪表盘
             window.location.href = "loggedPatientDashboard.html";
         } else {
             alert("Invalid Login Credentials");
